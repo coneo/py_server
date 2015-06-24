@@ -6,14 +6,43 @@ import threading
 import SocketServer, subprocess
 from threading import Thread
 from daemon import Daemon
+from svc import PySvc
+import win32serviceutil
 
 HOST = 'localhost'
 PORT = 5566MAX_DATASIZE = 1024 * 64
 
-logging.basicConfig(filename='log/server.log',
+logging.basicConfig(filename='C:\Users\hongxiaoqiang\Desktop\py_server\log\server.log',
 					level=logging.DEBUG, 
 					format='%(asctime)s - %(levelname)s: %(message)s')
 logger = logging.getLogger('server')
+
+#bat -> msg map
+bat_map = {
+	'Pkgconfig.bat' : (
+		'Config'
+		),
+	'PkgIOSAB.bat' : (
+		'IOS_Fright_AB', 
+		'IOS_Common_AB',
+		'IOS_Shop_AB'
+		),
+	'PkgANDROIDAB.bat' : (
+		'ANDROID_Fright_AB',
+		'ANDROID_Common_AB'
+		),
+	'PkgANDROIDAE.bat' : (
+		'ANDROID_AE'
+		),
+}
+def findBat(msg):
+	"find bat file by msg type in bat_map"
+	for key in bat_map:
+		if msg in bat_map[key]:
+			return key
+	
+	return False
+
 
 class FirTcpHandle(SocketServer.BaseRequestHandler):
 	"One instance per connection.  Override handle(self) to customize action."
@@ -26,6 +55,7 @@ class FirTcpHandle(SocketServer.BaseRequestHandler):
 		
 	def msg_parse(self,json_str):
 		data = json.loads(json_str)
+		logger.debug(data)
 		#print 'a:' + str(data['a'])
 		
 		threads = []
@@ -63,30 +93,23 @@ class FirTcpServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 		SocketServer.TCPServer.__init__(self, server_address, RequestHandlerClass)
 		
 
-class MainLoop(Daemon):
-	def run(self):
-		logger.debug('starting server ... ')
+class Engine(PySvc):
+	def start(self):
+		logger.debug('starting engine ... ')
 		server = FirTcpServer((HOST, PORT), FirTcpHandle)
 		server.serve_forever()
 		
+	def stop(self):
+		logger.debug('stopping engine ...')
+		
 if __name__ == '__main__':
-	'''try:
+	win32serviceutil.HandleCommandLine(Engine)
+
+'''
+	server = FirTcpServer((HOST, PORT), FirTcpHandle)
+	try:
+		print 'starting server ... '
 		server.serve_forever()
 	except KeyboardInterrupt:
-		sys.exit(0)'''
-		
-	loop = MainLoop('version_server.pid')
-	if len(sys.argv) == 2:
-		if 'start' == sys.argv[1]:
-			loop.start()
-		elif 'stop' == sys.argv[1]:
-			loop.stop()
-		elif 'restart' == sys.argv[1]:
-			loop.restart()
-		else:
-			print 'unknow command'
-			sys.exit(2)
 		sys.exit(0)
-	else:
-		print "usage: %s start|stop|restart" % sys.argv[0]
-		sys.exit(2)
+'''
